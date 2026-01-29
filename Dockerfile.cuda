@@ -1,35 +1,42 @@
 # WhisperX CLI - NVIDIA GPU Version
-# Requires NVIDIA Container Toolkit
+# Based on working whisperx-env configuration
 
-FROM nvidia/cuda:12.1.0-runtime-ubuntu22.04
+FROM nvidia/cuda:12.6.0-runtime-ubuntu22.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 
-# Install system dependencies + Python
+# Install system dependencies + Python 3.12
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    python3.10 \
-    python3.10-venv \
+    software-properties-common \
+    && add-apt-repository ppa:deadsnakes/ppa -y \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends \
+    python3.12 \
+    python3.12-venv \
+    python3.12-dev \
     python3-pip \
     ffmpeg \
     libsndfile1 \
+    libgomp1 \
     git \
-    && ln -sf /usr/bin/python3.10 /usr/bin/python \
-    && ln -sf /usr/bin/pip3 /usr/bin/pip \
+    && ln -sf /usr/bin/python3.12 /usr/bin/python \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-# Install PyTorch with CUDA support, then whisperx
-RUN pip install --no-cache-dir --upgrade pip && \
+# Install pip for Python 3.12
+RUN python -m ensurepip --upgrade && \
+    python -m pip install --no-cache-dir --upgrade pip
+
+# Install PyTorch with CUDA 12.6 support, then whisperx
+RUN pip install --no-cache-dir \
+    torch==2.5.1 \
+    torchaudio==2.5.1 \
+    --index-url https://download.pytorch.org/whl/cu126 && \
     pip install --no-cache-dir \
-    torch==2.2.0 \
-    torchaudio==2.2.0 \
-    --index-url https://download.pytorch.org/whl/cu121 && \
-    pip install --no-cache-dir \
-    whisperx==3.3.0 \
-    faster-whisper==1.1.0
+    whisperx==3.4.3
 
 # Create directories
 RUN mkdir -p /root/.cache/huggingface /app/output /app/input

@@ -18,6 +18,9 @@ services:
       # Mount current directory for input/output
       - .:/app/input
     working_dir: /app/input
+    # Required for ctranslate2 library
+    security_opt:
+      - seccomp:unconfined
 
   # ==========================================
   # GPU Version
@@ -30,6 +33,9 @@ services:
       - whisperx-cache:/root/.cache
       - .:/app/input
     working_dir: /app/input
+    # Required for ctranslate2 library
+    security_opt:
+      - seccomp:unconfined
     deploy:
       resources:
         reservations:

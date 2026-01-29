@@ -149,6 +149,7 @@ Edit the wrapper scripts to change defaults:
 | base | Fast | Medium | ~1 GB | ~2 GB |
 | small | Medium | Good | ~2 GB | ~4 GB |
 | medium | Slow | Better | ~5 GB | ~8 GB |
+| large-v2 | Slower | Great | ~10 GB | ~16 GB |
 | large-v3 | Slowest | Best | ~10 GB | ~16 GB |
 
 ### Supported Languages
