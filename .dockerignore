@@ -1,0 +1,27 @@
+# Media files
+*.mp3
+*.mp4
+*.wav
+*.m4a
+*.avi
+*.mov
+*.mkv
+*.webm
+
+# Output files
+*.txt
+*.srt
+*.vtt
+*.json
+
+# Git
+.git/
+.gitignore
+
+# Docs
+*.md
+docs/
+
+# IDE
+.vscode/
+.idea/

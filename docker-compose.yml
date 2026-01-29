@@ -1,0 +1,43 @@
+# WhisperX CLI Docker Compose
+#
+# Usage:
+#   CPU:  docker compose run --rm whisperx audio.mp3 --model large-v3 --language es
+#   GPU:  docker compose run --rm whisperx-gpu audio.mp3 --model large-v3 --language es
+
+services:
+  # ==========================================
+  # CPU Version
+  # ==========================================
+  whisperx:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      # Model cache (persists between runs)
+      - whisperx-cache:/root/.cache
+      # Mount current directory for input/output
+      - .:/app/input
+    working_dir: /app/input
+
+  # ==========================================
+  # GPU Version
+  # ==========================================
+  whisperx-gpu:
+    build:
+      context: .
+      dockerfile: Dockerfile.cuda
+    volumes:
+      - whisperx-cache:/root/.cache
+      - .:/app/input
+    working_dir: /app/input
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+volumes:
+  whisperx-cache:
+    name: whisperx-model-cache

@@ -1,0 +1,47 @@
+# Audio/Video files (don't commit media)
+*.mp3
+*.mp4
+*.wav
+*.m4a
+*.ogg
+*.flac
+*.avi
+*.mov
+*.mkv
+*.webm
+*.flv
+
+# Transcription outputs
+*.txt
+*.srt
+*.vtt
+*.json
+*.tsv
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+.venv/
+env/
+.env
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+.docker/
+
+# Logs
+*.log

@@ -1,0 +1,44 @@
+# WhisperX CLI - NVIDIA GPU Version
+# Requires NVIDIA Container Toolkit
+
+FROM nvidia/cuda:12.1.0-runtime-ubuntu22.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
+
+# Install system dependencies + Python
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3.10 \
+    python3.10-venv \
+    python3-pip \
+    ffmpeg \
+    libsndfile1 \
+    git \
+    && ln -sf /usr/bin/python3.10 /usr/bin/python \
+    && ln -sf /usr/bin/pip3 /usr/bin/pip \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Install PyTorch with CUDA support, then whisperx
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir \
+    torch==2.2.0 \
+    torchaudio==2.2.0 \
+    --index-url https://download.pytorch.org/whl/cu121 && \
+    pip install --no-cache-dir \
+    whisperx==3.3.0 \
+    faster-whisper==1.1.0
+
+# Create directories
+RUN mkdir -p /root/.cache/huggingface /app/output /app/input
+
+# Environment for GPU
+ENV NVIDIA_VISIBLE_DEVICES=all
+ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility
+
+WORKDIR /app/input
+
+ENTRYPOINT ["whisperx"]
+CMD ["--help"]

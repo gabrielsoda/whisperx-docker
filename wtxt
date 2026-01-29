@@ -1,0 +1,102 @@
+#!/bin/bash
+# wtxt - WhisperX transcription wrapper for Docker
+# Usage: wtxt <audio_file> [additional whisperx options]
+#
+# Examples:
+#   wtxt audio.mp3
+#   wtxt video.mp4 --language en
+#   wtxt podcast.wav --model medium --output_format srt
+
+set -e
+
+# Configuration - edit these defaults as needed
+DEFAULT_MODEL="large-v3"
+DEFAULT_LANGUAGE="es"
+DEFAULT_FORMAT="txt"
+USE_GPU=${WHISPERX_GPU:-false}
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+# Check if Docker is running
+if ! docker info > /dev/null 2>&1; then
+    echo -e "${RED}Error: Docker is not running${NC}"
+    exit 1
+fi
+
+# Check if file argument provided
+if [ $# -eq 0 ]; then
+    echo -e "${YELLOW}Usage: wtxt <audio_file> [whisperx options]${NC}"
+    echo ""
+    echo "Examples:"
+    echo "  wtxt audio.mp3"
+    echo "  wtxt video.mp4 --language en"
+    echo "  wtxt podcast.wav --model medium"
+    echo ""
+    echo "Environment variables:"
+    echo "  WHISPERX_GPU=true    Use GPU acceleration"
+    echo ""
+    echo "Defaults: --model $DEFAULT_MODEL --language $DEFAULT_LANGUAGE --output_format $DEFAULT_FORMAT"
+    exit 1
+fi
+
+# Get the input file
+INPUT_FILE="$1"
+shift
+
+# Check if file exists
+if [ ! -f "$INPUT_FILE" ]; then
+    echo -e "${RED}Error: File not found: $INPUT_FILE${NC}"
+    exit 1
+fi
+
+# Get absolute path and directory
+INPUT_PATH=$(realpath "$INPUT_FILE")
+INPUT_DIR=$(dirname "$INPUT_PATH")
+INPUT_NAME=$(basename "$INPUT_PATH")
+
+# Select service based on GPU preference
+if [ "$USE_GPU" = "true" ] || [ "$WHISPERX_GPU" = "true" ]; then
+    SERVICE="whisperx-gpu"
+    echo -e "${GREEN}Using GPU acceleration${NC}"
+else
+    SERVICE="whisperx"
+    echo -e "${GREEN}Using CPU${NC}"
+fi
+
+# Build default arguments
+ARGS=""
+
+# Add defaults if not overridden
+if [[ ! "$*" =~ "--model" ]]; then
+    ARGS="$ARGS --model $DEFAULT_MODEL"
+fi
+
+if [[ ! "$*" =~ "--language" ]]; then
+    ARGS="$ARGS --language $DEFAULT_LANGUAGE"
+fi
+
+if [[ ! "$*" =~ "--output_format" ]]; then
+    ARGS="$ARGS --output_format $DEFAULT_FORMAT"
+fi
+
+# Get the directory of this script (where docker-compose.yml should be)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+echo -e "${GREEN}Transcribing: $INPUT_NAME${NC}"
+echo "Options: $ARGS $*"
+echo ""
+
+# Run whisperx in Docker
+# Mount the input file's directory and run from there
+docker compose -f "$SCRIPT_DIR/docker-compose.yml" run --rm \
+    -v "$INPUT_DIR:/app/input" \
+    -w /app/input \
+    "$SERVICE" \
+    "$INPUT_NAME" $ARGS "$@"
+
+echo ""
+echo -e "${GREEN}Transcription complete!${NC}"
