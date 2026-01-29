@@ -7,7 +7,16 @@ Containerized [WhisperX](https://github.com/m-bain/whisperX) for portable audio/
 - CPU and NVIDIA GPU support
 - Persistent model cache (download once, use forever)
 - Simple wrapper scripts for easy usage
+- OpenAI Whisper fallback for WSL2 compatibility
 - Works identically across all operating systems
+
+## Available Services
+
+| Service | Engine | WSL2 | Windows | Linux | Use Case |
+|---------|--------|------|---------|-------|----------|
+| `whisperx` | WhisperX + faster-whisper | ❌ | ✅ | ✅ | Fast transcription with word alignment |
+| `whisperx-gpu` | WhisperX + CUDA | ❌ | ✅ | ✅ | GPU-accelerated transcription |
+| `whisper` | OpenAI Whisper | ✅ | ✅ | ✅ | WSL2-compatible fallback |
 
 ## Prerequisites
 
@@ -19,18 +28,21 @@ Containerized [WhisperX](https://github.com/m-bain/whisperX) for portable audio/
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/whisperx-docker.git
+git clone https://github.com/gabrielsoda/whisperx-docker.git
 cd whisperx-docker
 ```
 
 ### 2. Build the image
 
 ```bash
-# CPU version
+# CPU version (Windows/Linux)
 docker compose build whisperx
 
-# GPU version
+# GPU version (Windows/Linux with NVIDIA)
 docker compose build whisperx-gpu
+
+# WSL2 compatible version (see Known Issues section)
+docker compose build whisper
 ```
 
 ### 3. Transcribe
@@ -48,13 +60,25 @@ docker compose run --rm whisperx your_audio.mp3 --model large-v3 --language es -
 
 ## Usage
 
+### WSL2 Users (Important!)
+
+If you're running Docker inside WSL2, use the `whisper` service instead of `whisperx`:
+
+```bash
+# WSL2: Use 'whisper' service
+docker compose run --rm -v "$(pwd):/app/input" whisper \
+  audio.mp3 --model medium --language es --output_format txt
+```
+
+See [Known Issues](#known-issues--development-notes) for details.
+
 ### Direct Docker Compose
 
 ```bash
-# Basic transcription (CPU)
+# Basic transcription (CPU) - Windows/Linux native
 docker compose run --rm whisperx audio.mp3 --model large-v3 --language es --output_format txt
 
-# GPU transcription
+# GPU transcription - Windows/Linux native
 docker compose run --rm whisperx-gpu audio.mp3 --model large-v3 --language es --output_format txt
 
 # Multiple output formats
@@ -247,6 +271,72 @@ Use a smaller model:
 ```bash
 chmod +x wtxt
 ```
+
+## Known Issues & Development Notes
+
+### WSL2 Compatibility (ctranslate2)
+
+**Problem:** WhisperX uses [faster-whisper](https://github.com/guillaumekln/faster-whisper) which depends on [ctranslate2](https://github.com/OpenNMT/CTranslate2). The ctranslate2 library requires executable stack memory, which is blocked by the WSL2 kernel's security configuration.
+
+**Error message:**
+```
+ImportError: libctranslate2-d3638643.so.4.4.0: cannot enable executable stack as shared object requires: Invalid argument
+```
+
+**What we tried:**
+- Different ctranslate2 versions (4.4.0, 4.3.1, 3.24.0) - Same error
+- Docker security options (`--security-opt seccomp=unconfined`) - No effect
+- Privileged mode (`--privileged`) - No effect
+- Different base images (python:3.10-slim, python:3.10, python:3.12) - Same error
+
+**Root cause:** This is a kernel-level restriction in WSL2 that cannot be bypassed through Docker configuration. The WSL2 kernel blocks `execstack` operations for security reasons.
+
+**Solution:** We added an OpenAI Whisper fallback service (`whisper`) that uses PyTorch directly without ctranslate2. This service works on WSL2 but is slower and lacks some WhisperX features.
+
+### Feature Comparison
+
+| Feature | whisperx | whisper (fallback) |
+|---------|----------|-------------------|
+| Transcription | ✅ | ✅ |
+| Word-level timestamps | ✅ | ❌ |
+| Speaker diarization | ✅ | ❌ |
+| Speed (CPU) | Fast | Slower |
+| WSL2 Docker support | ❌ | ✅ |
+| Windows/Linux Docker | ✅ | ✅ |
+
+### NumPy 2.x Compatibility
+
+**Problem:** PyTorch 2.2.0 wheels were compiled with NumPy 1.x and crash with NumPy 2.x.
+
+**Error message:**
+```
+A module that was compiled using NumPy 1.x cannot be run in NumPy 2.x
+```
+
+**Solution:** For older PyTorch versions, pin `numpy<2` in requirements. With PyTorch 2.5.1+, NumPy 2.x is supported.
+
+### Package Index Conflicts
+
+**Problem:** Installing whisperx with PyTorch from the PyTorch index fails because whisperx is only on PyPI.
+
+**Error message:**
+```
+ERROR: Could not find a version that satisfies the requirement whisperx==3.3.0
+```
+
+**Solution:** Split pip install into two commands:
+1. Install PyTorch from PyTorch index (`--index-url https://download.pytorch.org/whl/cpu`)
+2. Install whisperx from PyPI (default index)
+
+### Environment Reference
+
+This Docker setup was based on a working local environment:
+- Python 3.12.11
+- whisperx 3.4.3
+- faster-whisper 1.2.0
+- ctranslate2 4.4.0
+- torch 2.8.0+cu126
+- numpy 2.1.2
 
 ## License
 
