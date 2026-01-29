@@ -44,6 +44,18 @@ services:
               count: all
               capabilities: [gpu]
 
+  # ==========================================
+  # OpenAI Whisper (WSL2 compatible fallback)
+  # ==========================================
+  whisper:
+    build:
+      context: .
+      dockerfile: Dockerfile.whisper
+    volumes:
+      - whisperx-cache:/root/.cache
+      - .:/app/input
+    working_dir: /app/input
+
 volumes:
   whisperx-cache:
     name: whisperx-model-cache
